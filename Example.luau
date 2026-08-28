@@ -5,12 +5,10 @@
                      \ V  V / (_| | |  | | | | | | | | (_| |                    
                       \_/\_/ \__,_|_|  |_| |_|_|_| |_|\__, |                    
                                                       |___/                     
-      this example file is missing a lot of stuff and its pretty outdated       
-               i recommend using the documentation for Obsidian:                
-                        https://docs.mspaint.cc/obsidian                        
-                                                                                
-              a lot of stuff is very similar but it's not the same              
-                you can look through the source code of Linoria                 
+      this example file is missing a lot of stuff and its pretty outdated
+
+              a lot of stuff is very similar but it's not the same
+                you can look through the source code of Linoria
                                                                                 
                 if anyone wants to expand on this example script                
                        make an pull request or something                        
@@ -19,11 +17,11 @@
       https://github.com/violin-suzutsuki/LinoriaLib/blob/main/Example.lua                
 --]]
 
-local repo = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/"
+local repo = "https://raw.githubusercontent.com/tcp25565/LinoriaLib/main/"
 
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local Library = loadstring(game:HttpGet(repo .. "Library.luau"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.luau"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.luau"))()
 
 local Options = Library.Options
 local Toggles = Library.Toggles
