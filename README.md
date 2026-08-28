@@ -1,19 +1,19 @@
 > [!IMPORTANT]  
-> This is a (somewhat) maintained fork of LinoriaLib. This is not the original LinoriaLib repository.<br />
+> This is a maintained fork of LinoriaLib. This is not the original LinoriaLib repository.<br />
 > Changelogs: [Changelogs](CHANGELOG.md)<br />
-> The repo might get archived at some point since I'm more focused on the [Obsidian](https://github.com/deividcomsono/Obsidian) UI Library now.
 
 # LinoriaLib
 A Roblox UI library inspired by Splix, BBot and many others.
 
 ###### Original repository
-* [violin-suzutsuki/LinoriaLib](https://github.com/violin-suzutsuki/LinoriaLib)
+* [mstudio45/LinoriaLib](https://github.com/mstudio45/LinoriaLib)
+    * [violin-suzutsuki/LinoriaLib](https://github.com/violin-suzutsuki/LinoriaLib)
 
 ###### Example Script: 
-* [Example](Example.lua)
+* [Example](Example.luau)
 
 ###### Interface Addons:
-* [Theme Manager](addons/ThemeManager.lua)&nbsp;&nbsp;|&nbsp;&nbsp;[Save Manager](addons/SaveManager.lua) 
+* [Theme Manager](addons/ThemeManager.luau)&nbsp;&nbsp;|&nbsp;&nbsp;[Save Manager](addons/SaveManager.luau) 
 
 ## Features
 - Tabs, group boxes, and tab boxes
