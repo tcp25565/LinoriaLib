@@ -243,6 +243,8 @@ local ThemeManager = {} do
 
 		local theme = {}
 		for _, field in next, ThemeFields do
+			if not self.Library.Options[field] then continue end
+
 			if field == "VideoLink" then
 				theme[field] = self.Library.Options[field].Value
 			else
@@ -311,15 +313,14 @@ local ThemeManager = {} do
 	end
 
 	function ThemeManager:CreateThemeManager(groupbox)
-		groupbox:AddLabel('Background color'):AddColorPicker('BackgroundColor', { Default = self.Library.BackgroundColor });
-		groupbox:AddLabel('Main color')	:AddColorPicker('MainColor', { Default = self.Library.MainColor });
-		groupbox:AddLabel('Accent color'):AddColorPicker('AccentColor', { Default = self.Library.AccentColor });
+		groupbox:AddLabel('Background Color'):AddColorPicker('BackgroundColor', { Default = self.Library.BackgroundColor });
+		groupbox:AddLabel('Main Color')	:AddColorPicker('MainColor', { Default = self.Library.MainColor });
+		groupbox:AddLabel('Accent Color'):AddColorPicker('AccentColor', { Default = self.Library.AccentColor });
 
 		groupbox:AddToggle('ThemeManager_RainbowAccentColor', { Text = 'Rainbow Accent Color', Default = false });
 
-		groupbox:AddLabel('Outline color'):AddColorPicker('OutlineColor', { Default = self.Library.OutlineColor });
-		groupbox:AddLabel('Font color')	:AddColorPicker('FontColor', { Default = self.Library.FontColor });
-		groupbox:AddInput('VideoLink', { Text = '.webm Video Background (Link)', Default = self.Library.VideoLink });
+		groupbox:AddLabel('Outline Color'):AddColorPicker('OutlineColor', { Default = self.Library.OutlineColor });
+		groupbox:AddLabel('Font Color')	:AddColorPicker('FontColor', { Default = self.Library.FontColor });
 
 		groupbox:AddDivider()
 
@@ -333,54 +334,6 @@ local ThemeManager = {} do
 
 			self:ApplyTheme(name)
 			self.Library:Notify(string.format('Applied theme %q', name))
-		end)
-		groupbox:AddButton('Set as Default', function()
-			local name = self.Library.Options.ThemeManager_ThemeList.Value
-			if not name or name == '' then
-				self.Library:Notify('No theme selected', 2)
-				return
-			end
-
-			self:SaveDefault(name)
-			self.Library:Notify(string.format('Set default theme to %q', name))
-		end)
-
-		groupbox:AddDivider()
-
-		groupbox:AddInput('ThemeManager_CustomThemeName', { Text = 'Custom theme name' })
-		groupbox:AddButton('Save Current As Theme', function()
-			local name = self.Library.Options.ThemeManager_CustomThemeName.Value
-			if name:gsub(' ', '') == '' then
-				self.Library:Notify('Invalid theme name (empty)', 2)
-				return
-			end
-
-			self:SaveCustomTheme(name)
-
-			self.Library:Notify(string.format('Saved theme %q', name))
-			self.Library.Options.ThemeManager_ThemeList:SetValues(self:GetAllThemeNames())
-		end)
-		groupbox:AddButton('Delete Theme', function()
-			local name = self.Library.Options.ThemeManager_ThemeList.Value
-			if not name or name == '' then
-				self.Library:Notify('No theme selected', 2)
-				return
-			end
-
-			if self.BuiltInThemes[name] then
-				self.Library:Notify('Cannot delete a built-in theme', 2)
-				return
-			end
-
-			local success, err = self:Delete(name)
-			if not success then
-				self.Library:Notify('Failed to delete theme: ' .. err)
-				return
-			end
-
-			self.Library:Notify(string.format('Deleted theme %q', name))
-			self.Library.Options.ThemeManager_ThemeList:SetValues(self:GetAllThemeNames())
-			self.Library.Options.ThemeManager_ThemeList:SetValue('Default')
 		end)
 
 		groupbox:AddDivider()
@@ -429,7 +382,7 @@ local ThemeManager = {} do
 
 	function ThemeManager:CreateGroupBox(tab)
 		assert(self.Library, 'ThemeManager:CreateGroupBox -> Must set ThemeManager.Library first!')
-		return tab:AddLeftGroupbox('Themes')
+		return tab:AddLeftGroupbox('Theme')
 	end
 
 	function ThemeManager:ApplyToTab(tab)

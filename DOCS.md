@@ -583,9 +583,14 @@ SaveManager:LoadAutoloadConfig() -- call once at the end of your script, after t
 ```
 
 `BuildConfigSection` lays out (in order): a config name input + "Create Config" + "Import Config"
-buttons, a divider, the saved-configs dropdown + "Load Config" / "Save Config" / "Delete Config" /
-"Export Config" buttons, another divider, then "Refresh List" / "Set as Autoload" / "Reset
-Autoload" and a label showing the current autoload config.
+buttons, a divider, then the saved-configs dropdown + "Load Config" / "Save Config" / "Delete
+Config" / "Export Config" buttons.
+
+There's no UI for refreshing the config list or managing the autoload config — those remain
+available programmatically (`SaveManager:RefreshConfigList()`, `SaveManager:SaveAutoloadConfig`,
+`SaveManager:DeleteAutoLoadConfig`, `SaveManager:GetAutoloadConfig()`); the list is already
+refreshed automatically after Create/Delete. Add your own button(s) for these if you want them
+in-menu.
 
 Import/Export round-trip a config through the clipboard (via the executor's `setclipboard` /
 `getclipboard`, falling back to `toclipboard` for `setclipboard` if that's what the executor
@@ -630,13 +635,16 @@ ThemeManager:ApplyToGroupbox(someGroupbox)         -- build directly into an exi
 Built-in themes: `Default`, `BBot`, `Fatality`, `Jester`, `Mint`, `Tokyo Night`, `Ubuntu`,
 `Quartz`.
 
-`CreateThemeManager` lays out (in order): color pickers for Background/Main/Accent, a "Rainbow
-Accent Color" toggle, color pickers for Outline/Font, the video background input, a divider, a
-single "Selected Theme" dropdown (built-in **and** custom themes merged into one list) with "Apply
-Theme" / "Set as Default" buttons, a divider, a custom-theme-name input with "Save Current As
-Theme" / "Delete Theme" buttons (built-in themes can't be deleted), a divider, and finally "Show
-Keybinds Menu" / "Show Watermark" toggles wired straight to `Library.KeybindFrame.Visible` and
-`Library:SetWatermarkVisibility`.
+`CreateThemeManager` lays out (in order): color pickers for Background/Main/Accent Color, a
+"Rainbow Accent Color" toggle, color pickers for Outline/Font Color, a divider, a single "Selected
+Theme" dropdown (built-in **and** custom themes merged into one list) with an "Apply Theme"
+button, a divider, and finally "Show Keybinds Menu" / "Show Watermark" toggles wired straight to
+`Library.KeybindFrame.Visible` and `Library:SetWatermarkVisibility`.
+
+There's no UI for creating/deleting custom themes or setting a `.webm` video background — those
+are still available programmatically (`ThemeManager:SaveCustomTheme`, `ThemeManager:Delete`,
+setting `Library.VideoLink` directly), just not exposed as buttons in the default groupbox. Build
+your own controls for them if you need that in-menu.
 
 Enabling "Rainbow Accent Color" starts a `RunService.Heartbeat` connection that continuously
 cycles `AccentColor`'s hue; toggling it off (or `Library:Unload()`) disconnects it.

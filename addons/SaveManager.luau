@@ -136,7 +136,7 @@ local SaveManager = {} do
     function SaveManager:IgnoreThemeSettings()
         self:SetIgnoreIndexes({
             "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor", -- themes
-            "ThemeManager_ThemeList", 'ThemeManager_CustomThemeName', 'ThemeManager_RainbowAccentColor', -- themes
+            "ThemeManager_ThemeList", 'ThemeManager_RainbowAccentColor', -- themes
             'ThemeManager_ShowKeybindsMenu', 'ThemeManager_ShowWatermark', -- ui prefs, not game-specific
             "VideoLink",
         })
@@ -592,38 +592,6 @@ local SaveManager = {} do
             setclipboard(encoded)
             self.Library:Notify('Copied current config to clipboard')
         end)
-
-        section:AddDivider()
-
-        section:AddButton('Refresh List', function()
-            self.Library.Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
-            self.Library.Options.SaveManager_ConfigList:SetValue(nil)
-        end)
-
-        section:AddButton('Set as Autoload', function()
-            local name = self.Library.Options.SaveManager_ConfigList.Value
-
-            local success, err = self:SaveAutoloadConfig(name)
-            if not success then
-                self.Library:Notify('Failed to set autoload config: ' .. err)
-                return
-            end
-
-            self.Library:Notify(string.format('Set %q to auto load', name))
-            self.AutoloadConfigLabel:SetText('Current autoload config: ' .. name)
-        end)
-        section:AddButton('Reset Autoload', function()
-            local success, err = self:DeleteAutoLoadConfig()
-            if not success then
-                self.Library:Notify('Failed to set autoload config: ' .. err)
-                return
-            end
-
-            self.Library:Notify('Set autoload to none')
-            self.AutoloadConfigLabel:SetText('Current autoload config: none')
-        end)
-
-        self.AutoloadConfigLabel = section:AddLabel("Current autoload config: " .. self:GetAutoloadConfig(), true)
 
         -- self:LoadAutoloadConfig()
         self:SetIgnoreIndexes({ 'SaveManager_ConfigList', 'SaveManager_ConfigName' })
