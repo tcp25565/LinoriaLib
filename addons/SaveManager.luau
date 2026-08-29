@@ -8,6 +8,9 @@ end)
 local HttpService: HttpService = cloneref(game:GetService("HttpService"))
 local isfolder, isfile, listfiles = isfolder, isfile, listfiles;
 
+local setclipboard = setclipboard or toclipboard
+local getclipboard = getclipboard
+
 local assert = function(condition, errorMessage) 
     if (not condition) then
         error(if errorMessage then errorMessage else "assert failed", 3)
@@ -133,7 +136,8 @@ local SaveManager = {} do
     function SaveManager:IgnoreThemeSettings()
         self:SetIgnoreIndexes({
             "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor", -- themes
-            "ThemeManager_ThemeList", 'ThemeManager_CustomThemeList', 'ThemeManager_CustomThemeName', -- themes
+            "ThemeManager_ThemeList", 'ThemeManager_CustomThemeName', 'ThemeManager_RainbowAccentColor', -- themes
+            'ThemeManager_ShowKeybindsMenu', 'ThemeManager_ShowWatermark', -- ui prefs, not game-specific
             "VideoLink",
         })
     end
@@ -266,6 +270,65 @@ local SaveManager = {} do
 
         local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(file))
         if not success then return false, 'decode error' end
+
+        if self.UseLoadingOrder == true and typeof(self.LoadingOrder) == "table" then
+            table.sort(decoded.objects, function(a, b)
+                local aIndex = table.find(self.LoadingOrder, a.type) or math.huge
+                local bIndex = table.find(self.LoadingOrder, b.type) or math.huge
+                return aIndex < bIndex
+            end)
+        end
+
+        for _, option in decoded.objects do
+            if not option.type then continue end
+            if not self.Parser[option.type] then continue end
+            if self.Ignore[option.idx] then continue end
+
+            task.spawn(self.Parser[option.type].Load, option.idx, option) -- task.spawn() so the config loading wont get stuck.
+        end
+
+        return true
+    end
+
+    --// Import, Export (clipboard) \\--
+    function SaveManager:Export()
+        local data = {
+            objects = {}
+        }
+
+        for idx, toggle in next, self.Library.Toggles do
+            if not toggle.Type then continue end
+            if not self.Parser[toggle.Type] then continue end
+            if self.Ignore[idx] then continue end
+
+            table.insert(data.objects, self.Parser[toggle.Type].Save(idx, toggle))
+        end
+
+        for idx, option in next, self.Library.Options do
+            if not option.Type then continue end
+            if not self.Parser[option.Type] then continue end
+            if self.Ignore[idx] then continue end
+
+            table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
+        end
+
+        local success, encoded = pcall(HttpService.JSONEncode, HttpService, data)
+        if not success then
+            return false, 'failed to encode data'
+        end
+
+        return true, encoded
+    end
+
+    function SaveManager:Import(raw)
+        if typeof(raw) ~= 'string' or raw == '' then
+            return false, 'no config data given'
+        end
+
+        local success, decoded = pcall(HttpService.JSONDecode, HttpService, raw)
+        if not success or typeof(decoded) ~= 'table' or typeof(decoded.objects) ~= 'table' then
+            return false, 'invalid config data'
+        end
 
         if self.UseLoadingOrder == true and typeof(self.LoadingOrder) == "table" then
             table.sort(decoded.objects, function(a, b)
@@ -433,10 +496,10 @@ local SaveManager = {} do
     function SaveManager:BuildConfigSection(tab)
         assert(self.Library, 'SaveManager:BuildConfigSection -> Must set SaveManager.Library')
 
-        local section = tab:AddRightGroupbox('Configuration')
+        local section = tab:AddRightGroupbox('Config')
 
-        section:AddInput('SaveManager_ConfigName',    { Text = 'Config name' })
-        section:AddButton('Create config', function()
+        section:AddInput('SaveManager_ConfigName',    { Text = 'Config Name' })
+        section:AddButton('Create Config', function()
             local name = self.Library.Options.SaveManager_ConfigName.Value
 
             if name:gsub(' ', '') == '' then
@@ -455,11 +518,31 @@ local SaveManager = {} do
             self.Library.Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
             self.Library.Options.SaveManager_ConfigList:SetValue(nil)
         end)
+        section:AddButton('Import Config', function()
+            if typeof(getclipboard) ~= 'function' then
+                self.Library:Notify('Your executor does not support reading the clipboard', 3)
+                return
+            end
+
+            local readSuccess, raw = pcall(getclipboard)
+            if not readSuccess or typeof(raw) ~= 'string' or raw == '' then
+                self.Library:Notify('Clipboard is empty or unreadable', 2)
+                return
+            end
+
+            local success, err = self:Import(raw)
+            if not success then
+                self.Library:Notify('Failed to import config: ' .. tostring(err))
+                return
+            end
+
+            self.Library:Notify('Imported config from clipboard')
+        end)
 
         section:AddDivider()
 
-        section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
-        section:AddButton('Load config', function()
+        section:AddDropdown('SaveManager_ConfigList', { Text = 'Configs', Values = self:RefreshConfigList(), AllowNull = true })
+        section:AddButton('Load Config', function()
             local name = self.Library.Options.SaveManager_ConfigList.Value
 
             local success, err = self:Load(name)
@@ -470,19 +553,18 @@ local SaveManager = {} do
 
             self.Library:Notify(string.format('Loaded config %q', name))
         end)
-        section:AddButton('Overwrite config', function()
+        section:AddButton('Save Config', function()
             local name = self.Library.Options.SaveManager_ConfigList.Value
 
             local success, err = self:Save(name)
             if not success then
-                self.Library:Notify('Failed to overwrite config: ' .. err)
+                self.Library:Notify('Failed to save config: ' .. err)
                 return
             end
 
-            self.Library:Notify(string.format('Overwrote config %q', name))
+            self.Library:Notify(string.format('Saved config %q', name))
         end)
-
-        section:AddButton('Delete config', function()
+        section:AddButton('Delete Config', function()
             local name = self.Library.Options.SaveManager_ConfigList.Value
 
             local success, err = self:Delete(name)
@@ -495,13 +577,30 @@ local SaveManager = {} do
             self.Library.Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
             self.Library.Options.SaveManager_ConfigList:SetValue(nil)
         end)
+        section:AddButton('Export Config', function()
+            if typeof(setclipboard) ~= 'function' then
+                self.Library:Notify('Your executor does not support writing to the clipboard', 3)
+                return
+            end
 
-        section:AddButton('Refresh list', function()
+            local success, encoded = self:Export()
+            if not success then
+                self.Library:Notify('Failed to export config: ' .. tostring(encoded))
+                return
+            end
+
+            setclipboard(encoded)
+            self.Library:Notify('Copied current config to clipboard')
+        end)
+
+        section:AddDivider()
+
+        section:AddButton('Refresh List', function()
             self.Library.Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
             self.Library.Options.SaveManager_ConfigList:SetValue(nil)
         end)
 
-        section:AddButton('Set as autoload', function()
+        section:AddButton('Set as Autoload', function()
             local name = self.Library.Options.SaveManager_ConfigList.Value
 
             local success, err = self:SaveAutoloadConfig(name)
@@ -513,7 +612,7 @@ local SaveManager = {} do
             self.Library:Notify(string.format('Set %q to auto load', name))
             self.AutoloadConfigLabel:SetText('Current autoload config: ' .. name)
         end)
-        section:AddButton('Reset autoload', function()
+        section:AddButton('Reset Autoload', function()
             local success, err = self:DeleteAutoLoadConfig()
             if not success then
                 self.Library:Notify('Failed to set autoload config: ' .. err)

@@ -576,11 +576,22 @@ SaveManager:SetFolder("MyScriptHub/specific-game")
 SaveManager:SetSubFolder("specific-place") -- optional: separates configs by e.g. game place ID
                                             -- results in MyScriptHub/specific-game/settings/specific-place
 
-SaveManager:BuildConfigSection(Tabs["UI Settings"]) -- builds a ready-made "Configuration" groupbox
-                                                     -- (create / load / overwrite / delete / autoload) on the given Tab
+SaveManager:BuildConfigSection(Tabs["UI Settings"]) -- builds a ready-made "Config" groupbox
+                                                     -- (create / import / load / save / delete / export / autoload) on the given Tab
 
 SaveManager:LoadAutoloadConfig() -- call once at the end of your script, after the UI is fully built
 ```
+
+`BuildConfigSection` lays out (in order): a config name input + "Create Config" + "Import Config"
+buttons, a divider, the saved-configs dropdown + "Load Config" / "Save Config" / "Delete Config" /
+"Export Config" buttons, another divider, then "Refresh List" / "Set as Autoload" / "Reset
+Autoload" and a label showing the current autoload config.
+
+Import/Export round-trip a config through the clipboard (via the executor's `setclipboard` /
+`getclipboard`, falling back to `toclipboard` for `setclipboard` if that's what the executor
+exposes) instead of the filesystem — handy for sharing a config with someone else without them
+needing the file. If the executor doesn't expose the needed clipboard function, the button just
+notifies the user instead of erroring.
 
 Manual API (used internally by `BuildConfigSection`, but callable directly too):
 
@@ -588,6 +599,8 @@ Manual API (used internally by `BuildConfigSection`, but callable directly too):
 SaveManager:Save(name)     --> success, err
 SaveManager:Load(name)     --> success, err
 SaveManager:Delete(name)   --> success, err
+SaveManager:Export()       --> success, encodedJsonString | errorString
+SaveManager:Import(raw)    --> success, err          -- raw is a JSON string previously produced by :Export()
 SaveManager:RefreshConfigList() --> array of config names
 SaveManager:SaveAutoloadConfig(name)
 SaveManager:GetAutoloadConfig() --> name or "none"
@@ -596,7 +609,8 @@ SaveManager:SetLoadingOrder(true, { "Dropdown", "Toggle", ... }) -- control the 
 ```
 
 Only `Toggle`, `Slider`, `Dropdown`, `ColorPicker`, `KeyPicker`, and `Input` elements are saved —
-these are the types with entries in `SaveManager.Parser`.
+these are the types with entries in `SaveManager.Parser`. `Export`/`Import` use the exact same
+parser table, so anything saved to disk can also be exported to the clipboard and vice versa.
 
 ## ThemeManager addon
 
@@ -616,6 +630,17 @@ ThemeManager:ApplyToGroupbox(someGroupbox)         -- build directly into an exi
 Built-in themes: `Default`, `BBot`, `Fatality`, `Jester`, `Mint`, `Tokyo Night`, `Ubuntu`,
 `Quartz`.
 
+`CreateThemeManager` lays out (in order): color pickers for Background/Main/Accent, a "Rainbow
+Accent Color" toggle, color pickers for Outline/Font, the video background input, a divider, a
+single "Selected Theme" dropdown (built-in **and** custom themes merged into one list) with "Apply
+Theme" / "Set as Default" buttons, a divider, a custom-theme-name input with "Save Current As
+Theme" / "Delete Theme" buttons (built-in themes can't be deleted), a divider, and finally "Show
+Keybinds Menu" / "Show Watermark" toggles wired straight to `Library.KeybindFrame.Visible` and
+`Library:SetWatermarkVisibility`.
+
+Enabling "Rainbow Accent Color" starts a `RunService.Heartbeat` connection that continuously
+cycles `AccentColor`'s hue; toggling it off (or `Library:Unload()`) disconnects it.
+
 Manual API:
 
 ```lua
@@ -624,8 +649,9 @@ ThemeManager:SaveCustomTheme(name)
 ThemeManager:GetCustomTheme(name)     --> theme table or nil
 ThemeManager:Delete(name)             --> success, err
 ThemeManager:ReloadCustomThemes()     --> array of custom theme names
+ThemeManager:GetAllThemeNames()       --> sorted array of built-in + custom theme names (used by the merged dropdown)
 ThemeManager:SaveDefault(name)        -- persist which theme loads automatically next time
-ThemeManager:LoadDefault()            -- called automatically by CreateThemeManager
+ThemeManager:LoadDefault()            -- called automatically by CreateThemeManager; sets AND applies the default theme
 ```
 
 Since `ThemeManager` writes color values into `Library.Options` (`BackgroundColor`, `MainColor`,

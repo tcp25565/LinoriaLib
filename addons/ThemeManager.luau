@@ -9,6 +9,7 @@ local httprequest = request or http_request or (http and http.request)
 local getassetfunc = getcustomasset
 
 local HttpService: HttpService = cloneref(game:GetService("HttpService"))
+local RunService: RunService = cloneref(game:GetService("RunService"))
 local isfolder, isfile, listfiles = isfolder, isfile, listfiles;
 
 local assert = function(condition, errorMessage) 
@@ -216,23 +217,18 @@ local ThemeManager = {} do
 		local theme = 'Default'
 		local content = isfile(self.Folder .. '/themes/default.txt') and readfile(self.Folder .. '/themes/default.txt')
 
-		local isDefault = true
 		if content then
 			if self.BuiltInThemes[content] then
 				theme = content
 			elseif self:GetCustomTheme(content) then
 				theme = content
-				isDefault = false;
 			end
 		elseif self.BuiltInThemes[self.DefaultTheme] then
 			theme = self.DefaultTheme
 		end
 
-		if isDefault then
-			self.Library.Options.ThemeManager_ThemeList:SetValue(theme)
-		else
-			self:ApplyTheme(theme)
-		end
+		self.Library.Options.ThemeManager_ThemeList:SetValue(theme)
+		self:ApplyTheme(theme)
 	end
 
 	function ThemeManager:SaveDefault(theme)
@@ -299,67 +295,82 @@ local ThemeManager = {} do
 	end
 
 	--// GUI \\--
+	function ThemeManager:GetAllThemeNames()
+		local names = {}
+
+		for name in next, self.BuiltInThemes do
+			table.insert(names, name)
+		end
+
+		for _, name in next, self:ReloadCustomThemes() do
+			table.insert(names, name)
+		end
+
+		table.sort(names)
+		return names
+	end
+
 	function ThemeManager:CreateThemeManager(groupbox)
 		groupbox:AddLabel('Background color'):AddColorPicker('BackgroundColor', { Default = self.Library.BackgroundColor });
 		groupbox:AddLabel('Main color')	:AddColorPicker('MainColor', { Default = self.Library.MainColor });
 		groupbox:AddLabel('Accent color'):AddColorPicker('AccentColor', { Default = self.Library.AccentColor });
+
+		groupbox:AddToggle('ThemeManager_RainbowAccentColor', { Text = 'Rainbow Accent Color', Default = false });
+
 		groupbox:AddLabel('Outline color'):AddColorPicker('OutlineColor', { Default = self.Library.OutlineColor });
 		groupbox:AddLabel('Font color')	:AddColorPicker('FontColor', { Default = self.Library.FontColor });
 		groupbox:AddInput('VideoLink', { Text = '.webm Video Background (Link)', Default = self.Library.VideoLink });
-		
-		local ThemesArray = {}
-		for Name, Theme in next, self.BuiltInThemes do
-			table.insert(ThemesArray, Name)
-		end
-
-		table.sort(ThemesArray, function(a, b) return self.BuiltInThemes[a][1] < self.BuiltInThemes[b][1] end)
 
 		groupbox:AddDivider()
 
-		groupbox:AddDropdown('ThemeManager_ThemeList', { Text = 'Theme list', Values = ThemesArray, Default = 1 })
-		groupbox:AddButton('Set as default', function()
-			self:SaveDefault(self.Library.Options.ThemeManager_ThemeList.Value)
-			self.Library:Notify(string.format('Set default theme to %q', self.Library.Options.ThemeManager_ThemeList.Value))
-		end)
+		groupbox:AddDropdown('ThemeManager_ThemeList', { Text = 'Selected Theme', Values = self:GetAllThemeNames(), Default = 1 })
+		groupbox:AddButton('Apply Theme', function()
+			local name = self.Library.Options.ThemeManager_ThemeList.Value
+			if not name or name == '' then
+				self.Library:Notify('No theme selected', 2)
+				return
+			end
 
-		self.Library.Options.ThemeManager_ThemeList:OnChanged(function()
-			self:ApplyTheme(self.Library.Options.ThemeManager_ThemeList.Value)
+			self:ApplyTheme(name)
+			self.Library:Notify(string.format('Applied theme %q', name))
+		end)
+		groupbox:AddButton('Set as Default', function()
+			local name = self.Library.Options.ThemeManager_ThemeList.Value
+			if not name or name == '' then
+				self.Library:Notify('No theme selected', 2)
+				return
+			end
+
+			self:SaveDefault(name)
+			self.Library:Notify(string.format('Set default theme to %q', name))
 		end)
 
 		groupbox:AddDivider()
 
 		groupbox:AddInput('ThemeManager_CustomThemeName', { Text = 'Custom theme name' })
-		groupbox:AddButton('Create theme', function() 
+		groupbox:AddButton('Save Current As Theme', function()
 			local name = self.Library.Options.ThemeManager_CustomThemeName.Value
-			if name:gsub(" ", "") == "" then
-                self.Library:Notify("Invalid theme name (empty)", 2)
-                return
-            end
-
-            self:SaveCustomTheme(name)
-
-            self.Library:Notify(string.format("Created theme %q", name))
-			self.Library.Options.ThemeManager_CustomThemeList:SetValues(self:ReloadCustomThemes())
-			self.Library.Options.ThemeManager_CustomThemeList:SetValue(nil)
-		end)
-
-		groupbox:AddDivider()
-
-		groupbox:AddDropdown('ThemeManager_CustomThemeList', { Text = 'Custom themes', Values = self:ReloadCustomThemes(), AllowNull = true, Default = 1 })
-		groupbox:AddButton('Load theme', function()
-			local name = self.Library.Options.ThemeManager_CustomThemeList.Value
-
-			self:ApplyTheme(name)
-			self.Library:Notify(string.format('Loaded theme %q', name))
-		end)
-		groupbox:AddButton('Overwrite theme', function()
-			local name = self.Library.Options.ThemeManager_CustomThemeList.Value
+			if name:gsub(' ', '') == '' then
+				self.Library:Notify('Invalid theme name (empty)', 2)
+				return
+			end
 
 			self:SaveCustomTheme(name)
-			self.Library:Notify(string.format('Overwrote config %q', name))
+
+			self.Library:Notify(string.format('Saved theme %q', name))
+			self.Library.Options.ThemeManager_ThemeList:SetValues(self:GetAllThemeNames())
 		end)
-		groupbox:AddButton('Delete theme', function()
-			local name = self.Library.Options.ThemeManager_CustomThemeList.Value
+		groupbox:AddButton('Delete Theme', function()
+			local name = self.Library.Options.ThemeManager_ThemeList.Value
+			if not name or name == '' then
+				self.Library:Notify('No theme selected', 2)
+				return
+			end
+
+			if self.BuiltInThemes[name] then
+				self.Library:Notify('Cannot delete a built-in theme', 2)
+				return
+			end
 
 			local success, err = self:Delete(name)
 			if not success then
@@ -368,30 +379,22 @@ local ThemeManager = {} do
 			end
 
 			self.Library:Notify(string.format('Deleted theme %q', name))
-			self.Library.Options.ThemeManager_CustomThemeList:SetValues(self:ReloadCustomThemes())
-			self.Library.Options.ThemeManager_CustomThemeList:SetValue(nil)
+			self.Library.Options.ThemeManager_ThemeList:SetValues(self:GetAllThemeNames())
+			self.Library.Options.ThemeManager_ThemeList:SetValue('Default')
 		end)
-		groupbox:AddButton('Refresh list', function()
-			self.Library.Options.ThemeManager_CustomThemeList:SetValues(self:ReloadCustomThemes())
-			self.Library.Options.ThemeManager_CustomThemeList:SetValue(nil)
-		end)
-		groupbox:AddButton('Set as default', function()
-			if self.Library.Options.ThemeManager_CustomThemeList.Value ~= nil and self.Library.Options.ThemeManager_CustomThemeList.Value ~= '' then
-				self:SaveDefault(self.Library.Options.ThemeManager_CustomThemeList.Value)
-				self.Library:Notify(string.format('Set default theme to %q', self.Library.Options.ThemeManager_CustomThemeList.Value))
-			end
-		end)
-		groupbox:AddButton('Reset default', function()
-			local success = pcall(delfile, self.Folder .. '/themes/default.txt')
-			if not success then 
-				self.Library:Notify('Failed to reset default: delete file error')
-				return
-			end
-				
-			self.Library:Notify('Set default theme to nothing')
-			self.Library.Options.ThemeManager_CustomThemeList:SetValues(self:ReloadCustomThemes())
-			self.Library.Options.ThemeManager_CustomThemeList:SetValue(nil)
-		end)
+
+		groupbox:AddDivider()
+
+		groupbox:AddToggle('ThemeManager_ShowKeybindsMenu', {
+			Text = 'Show Keybinds Menu',
+			Default = self.Library.KeybindFrame.Visible,
+			Callback = function(Value) self.Library.KeybindFrame.Visible = Value end,
+		})
+		groupbox:AddToggle('ThemeManager_ShowWatermark', {
+			Text = 'Show Watermark',
+			Default = self.Library.Watermark.Visible,
+			Callback = function(Value) self.Library:SetWatermarkVisibility(Value) end,
+		})
 
 		self:LoadDefault()
 
@@ -401,6 +404,27 @@ local ThemeManager = {} do
 		self.Library.Options.AccentColor:OnChanged(UpdateTheme)
 		self.Library.Options.OutlineColor:OnChanged(UpdateTheme)
 		self.Library.Options.FontColor:OnChanged(UpdateTheme)
+
+		local rainbowConnection: RBXScriptConnection? = nil
+		self.Library.Toggles.ThemeManager_RainbowAccentColor:OnChanged(function()
+			if self.Library.Toggles.ThemeManager_RainbowAccentColor.Value then
+				if rainbowConnection then rainbowConnection:Disconnect() end
+
+				rainbowConnection = RunService.Heartbeat:Connect(function()
+					self.Library.Options.AccentColor:SetValueRGB(Color3.fromHSV((tick() % 5) / 5, 1, 1))
+				end)
+			elseif rainbowConnection then
+				rainbowConnection:Disconnect()
+				rainbowConnection = nil
+			end
+		end)
+
+		self.Library:OnUnload(function()
+			if rainbowConnection then
+				rainbowConnection:Disconnect()
+				rainbowConnection = nil
+			end
+		end)
 	end
 
 	function ThemeManager:CreateGroupBox(tab)
