@@ -1157,7 +1157,7 @@ do
         local KeyPicker = {
             Value = nil; -- Key
             Modifiers = {}; -- Modifiers
-            DisplayValue = nil; -- Picker Text
+            DisplayValue = "..."; -- Picker Text
 
             Toggled = false;
             Mode = Info.Mode or "Toggle"; -- Always, Toggle, Hold, Press
