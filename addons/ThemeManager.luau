@@ -363,54 +363,12 @@ local ThemeManager = {} do
 			if self.Library.Toggles.ThemeManager_RainbowAccentColor.Value then
 				if rainbowConnection then rainbowConnection:Disconnect() end
 
-				-- Small step so each accent-colored element sits just next to the previous one
-				-- on the hue wheel (orange -> orange-red -> red -> ...) instead of jumping around.
-				local HueOffsetStep = 0.015
-
 				rainbowConnection = RunService.Heartbeat:Connect(function()
-					local BaseHue = (tick() % 5) / 5
-					local AccentColor = Color3.fromHSV(BaseHue, 1, 1)
-
-					self.Library.AccentColor = AccentColor
-					self.Library.AccentColorDark = self.Library:GetDarkerColor(AccentColor)
-
-					local AccentPicker = self.Library.Options.AccentColor
-					AccentPicker:SetHSVFromRGB(AccentColor)
-					AccentPicker:Display()
-
-					local AccentIndex = 0
-
-					for _, Object in next, self.Library.Registry do
-						local UsesAccent = false
-						local OffsetColor, OffsetColorDark
-
-						for Property, ColorIdx in next, Object.Properties do
-							if ColorIdx == "AccentColor" or ColorIdx == "AccentColorDark" then
-								if not UsesAccent then
-									UsesAccent = true
-									local OffsetHue = (BaseHue + (AccentIndex * HueOffsetStep)) % 1
-									OffsetColor = Color3.fromHSV(OffsetHue, 1, 1)
-								end
-
-								if ColorIdx == "AccentColor" then
-									Object.Instance[Property] = OffsetColor
-								else
-									OffsetColorDark = OffsetColorDark or self.Library:GetDarkerColor(OffsetColor)
-									Object.Instance[Property] = OffsetColorDark
-								end
-							end
-						end
-
-						if UsesAccent then
-							AccentIndex = AccentIndex + 1
-						end
-					end
+					self.Library.Options.AccentColor:SetValueRGB(Color3.fromHSV((tick() % 5) / 5, 1, 1))
 				end)
 			elseif rainbowConnection then
 				rainbowConnection:Disconnect()
 				rainbowConnection = nil
-
-				self:ThemeUpdate()
 			end
 		end)
 
