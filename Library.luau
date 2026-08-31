@@ -944,6 +944,32 @@ function Library:MouseIsOverOpenedFrame(Input)
     return false
 end
 
+function Library:IsMouseOverInterface(MainWindow)
+    if MainWindow and MainWindow.Visible and Library:MouseIsOverFrame(MainWindow) then
+        return true
+    end
+
+    if Library.KeybindFrame and Library.KeybindFrame.Visible and Library:MouseIsOverFrame(Library.KeybindFrame) then
+        return true
+    end
+
+    if Library.Watermark and Library.Watermark.Visible and Library:MouseIsOverFrame(Library.Watermark) then
+        return true
+    end
+
+    if Library.ActiveDialog and Library:MouseIsOverFrame(Library.ActiveDialog.Container) then
+        return true
+    end
+
+    for Frame in next, Library.OpenedFrames do
+        if Frame.Visible ~= false and Library:MouseIsOverFrame(Frame) then
+            return true
+        end
+    end
+
+    return false
+end
+
 function Library:OnHighlight(HighlightInstance, Instance, Properties, PropertiesDefault, condition)
     local function undoHighlight()
         local Reg = Library.RegistryMap[Instance]
@@ -7882,7 +7908,19 @@ end
     local TransparencyCache = {}
     local Toggled = false
     local Fading = false
-    
+
+    if WindowInfo.UnlockMouseWhileOpen then
+        -- Only capture (and free the mouse cursor for) input while the cursor is actually
+        -- over one of our frames, so camera control still works when it's elsewhere on screen.
+        Library:GiveSignal(RunService.RenderStepped:Connect(function()
+            if Library.Unloaded then
+                return
+            end
+
+            ModalElement.Modal = Toggled and Library:IsMouseOverInterface(Outer)
+        end))
+    end
+
     function Window:Toggle(Toggling)
         if typeof(Toggling) == "boolean" and Toggling == Toggled then return end
         if Fading then return end
@@ -7892,8 +7930,8 @@ end
         Toggled = (not Toggled)
 
         Library.Toggled = Toggled
-        if WindowInfo.UnlockMouseWhileOpen then
-            ModalElement.Modal = Library.Toggled
+        if WindowInfo.UnlockMouseWhileOpen and not Toggled then
+            ModalElement.Modal = false
         end
 
         if Toggled then
