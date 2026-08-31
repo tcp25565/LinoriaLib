@@ -363,12 +363,41 @@ local ThemeManager = {} do
 			if self.Library.Toggles.ThemeManager_RainbowAccentColor.Value then
 				if rainbowConnection then rainbowConnection:Disconnect() end
 
+				-- Golden ratio conjugate spreads consecutive registry entries evenly around the hue wheel
+				-- instead of clustering, so nearby elements don't land on near-identical colors.
+				local HueOffsetStep = 0.618033988749895
+
 				rainbowConnection = RunService.Heartbeat:Connect(function()
-					self.Library.Options.AccentColor:SetValueRGB(Color3.fromHSV((tick() % 5) / 5, 1, 1))
+					local BaseHue = (tick() % 5) / 5
+					local AccentColor = Color3.fromHSV(BaseHue, 1, 1)
+
+					self.Library.AccentColor = AccentColor
+					self.Library.AccentColorDark = self.Library:GetDarkerColor(AccentColor)
+
+					local AccentPicker = self.Library.Options.AccentColor
+					AccentPicker:SetHSVFromRGB(AccentColor)
+					AccentPicker:Display()
+
+					for _, Object in next, self.Library.Registry do
+						local OffsetHue = (BaseHue + (Object.Idx * HueOffsetStep)) % 1
+						local OffsetColor = Color3.fromHSV(OffsetHue, 1, 1)
+						local OffsetColorDark
+
+						for Property, ColorIdx in next, Object.Properties do
+							if ColorIdx == "AccentColor" then
+								Object.Instance[Property] = OffsetColor
+							elseif ColorIdx == "AccentColorDark" then
+								OffsetColorDark = OffsetColorDark or self.Library:GetDarkerColor(OffsetColor)
+								Object.Instance[Property] = OffsetColorDark
+							end
+						end
+					end
 				end)
 			elseif rainbowConnection then
 				rainbowConnection:Disconnect()
 				rainbowConnection = nil
+
+				self:ThemeUpdate()
 			end
 		end)
 
