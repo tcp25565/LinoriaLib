@@ -363,9 +363,9 @@ local ThemeManager = {} do
 			if self.Library.Toggles.ThemeManager_RainbowAccentColor.Value then
 				if rainbowConnection then rainbowConnection:Disconnect() end
 
-				-- Golden ratio conjugate spreads consecutive registry entries evenly around the hue wheel
-				-- instead of clustering, so nearby elements don't land on near-identical colors.
-				local HueOffsetStep = 0.618033988749895
+				-- Small step so each accent-colored element sits just next to the previous one
+				-- on the hue wheel (orange -> orange-red -> red -> ...) instead of jumping around.
+				local HueOffsetStep = 0.015
 
 				rainbowConnection = RunService.Heartbeat:Connect(function()
 					local BaseHue = (tick() % 5) / 5
@@ -378,18 +378,31 @@ local ThemeManager = {} do
 					AccentPicker:SetHSVFromRGB(AccentColor)
 					AccentPicker:Display()
 
+					local AccentIndex = 0
+
 					for _, Object in next, self.Library.Registry do
-						local OffsetHue = (BaseHue + (Object.Idx * HueOffsetStep)) % 1
-						local OffsetColor = Color3.fromHSV(OffsetHue, 1, 1)
-						local OffsetColorDark
+						local UsesAccent = false
+						local OffsetColor, OffsetColorDark
 
 						for Property, ColorIdx in next, Object.Properties do
-							if ColorIdx == "AccentColor" then
-								Object.Instance[Property] = OffsetColor
-							elseif ColorIdx == "AccentColorDark" then
-								OffsetColorDark = OffsetColorDark or self.Library:GetDarkerColor(OffsetColor)
-								Object.Instance[Property] = OffsetColorDark
+							if ColorIdx == "AccentColor" or ColorIdx == "AccentColorDark" then
+								if not UsesAccent then
+									UsesAccent = true
+									local OffsetHue = (BaseHue + (AccentIndex * HueOffsetStep)) % 1
+									OffsetColor = Color3.fromHSV(OffsetHue, 1, 1)
+								end
+
+								if ColorIdx == "AccentColor" then
+									Object.Instance[Property] = OffsetColor
+								else
+									OffsetColorDark = OffsetColorDark or self.Library:GetDarkerColor(OffsetColor)
+									Object.Instance[Property] = OffsetColorDark
+								end
 							end
+						end
+
+						if UsesAccent then
+							AccentIndex = AccentIndex + 1
 						end
 					end
 				end)
